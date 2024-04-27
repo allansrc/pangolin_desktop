@@ -14,122 +14,95 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/utils/theme/theme_manager.dart';
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:zenit_ui/zenit_ui.dart';
 
-// ignore: must_be_immutable
-class QsToggleButton extends StatefulWidget {
-  final String? title;
-  final String? subtitle;
-  final IconData? icon;
-  final bool value;
-  final VoidCallback? onPressed;
+class QsToggleButton extends StatelessWidget {
+  final ToggleProperty<String> title;
+  final ToggleProperty<String?>? subtitle;
+  final ToggleProperty<IconData> icon;
+  final bool enabled;
+  final ValueChanged<bool>? onPressed;
   final VoidCallback? onMenuPressed;
 
   const QsToggleButton({
-    Key? key,
-    this.title,
+    super.key,
+    required this.title,
     this.subtitle,
-    this.icon,
-    this.value = false,
+    required this.icon,
+    this.enabled = false,
     this.onPressed,
     this.onMenuPressed,
-  }) : super(key: key);
+  });
 
-  @override
-  _QsToggleButtonState createState() => _QsToggleButtonState();
-}
-
-class _QsToggleButtonState extends State<QsToggleButton> {
   @override
   Widget build(BuildContext context) {
-    final _color = widget.value == true
-        ? context.theme.primaryColor
-        : context.theme.backgroundColor.withOpacity(0.5);
+    final theme = Theme.of(context);
+
+    final Color color = enabled ? theme.primaryColor : theme.surfaceColor;
+    final String? subtitle = this.subtitle?.resolve(enabled: enabled);
 
     return SizedBox(
-      height: 60,
-      width: 162,
+      height: 56,
+      width: 160,
       child: Material(
-        color: _color,
-        borderRadius: context.commonData.borderRadiusMedium,
+        color: color,
+        shape: Constants.mediumShape,
         clipBehavior: Clip.antiAlias,
         child: InkWell(
-          onTap: () {
-            widget.onPressed?.call();
-            setState(() {});
-          },
+          onTap: () => onPressed?.call(!enabled),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
             child: Row(
               children: [
                 Icon(
-                  widget.icon ?? Icons.wifi,
+                  icon.resolve(enabled: enabled),
                   size: 20,
-                  color: _color.computeLuminance() > 0.4
-                      ? ColorsX.black
-                      : ColorsX.white,
+                  color: theme.computedForegroundColor(color),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Flexible(
-                      child: Text(
-                        widget.title != "Do not disturb"
-                            ? widget.title?.replaceAll(" ", "\n") ?? "Wifi"
-                            : "Do not \ndisturb",
-                        overflow: TextOverflow.visible,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: _color.computeLuminance() > 0.4
-                              ? ColorsX.black
-                              : ColorsX.white,
-                        ),
+                    Text(
+                      title.resolve(enabled: enabled),
+                      overflow: TextOverflow.visible,
+                      maxLines: 2,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: theme.computedForegroundColor(color),
                       ),
                     ),
-                    if (widget.subtitle != null)
+                    if (subtitle != null)
                       Text(
-                        widget.subtitle!,
+                        subtitle,
                         style: TextStyle(
-                          fontSize: 11,
-                          color: _color.computeLuminance() > 0.4
-                              ? ColorsX.black
-                              : ColorsX.white,
+                          fontSize: 10,
+                          color: theme.computedForegroundColor(color),
                         ),
-                      )
-                    else
-                      const SizedBox.shrink(),
+                      ),
                   ],
                 ),
                 const Spacer(),
-                VerticalDivider(
-                  color: widget.value == true
-                      ? context.theme.backgroundColor.op(0.2)
-                      : ThemeManager.of(context)
-                          .foregroundColorOnSurface
-                          .op(0.2),
-                ),
-                Material(
-                  color: Colors.transparent,
-                  shape: const CircleBorder(),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                    onTap: widget.onMenuPressed,
-                    child: Padding(
-                      padding: const EdgeInsets.all(6.0),
-                      child: Icon(
-                        Icons.chevron_right_rounded,
-                        size: 20,
-                        color: _color.computeLuminance() > 0.4
-                            ? ColorsX.black
-                            : ColorsX.white,
+                if (onMenuPressed.isNotNull)
+                  Material(
+                    color: theme.accentForegroundColor.op(0.2),
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: onMenuPressed,
+                      child: Padding(
+                        padding: const EdgeInsets.all(6.0),
+                        child: Icon(
+                          Icons.chevron_right_rounded,
+                          size: 20,
+                          color: theme.computedForegroundColor(color),
+                        ),
                       ),
                     ),
                   ),
-                )
               ],
             ),
           ),
@@ -137,4 +110,16 @@ class _QsToggleButtonState extends State<QsToggleButton> {
       ),
     );
   }
+}
+
+class ToggleProperty<T> {
+  final T base;
+  final T? active;
+
+  const ToggleProperty({required this.base, this.active});
+
+  const ToggleProperty.singleState(this.base) : active = null;
+
+  // ignore: avoid_positional_boolean_parameters
+  T resolve({required bool enabled}) => enabled ? active ?? base : base;
 }

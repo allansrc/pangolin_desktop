@@ -1,46 +1,66 @@
 <p align="center">
-  <img width="80%" src="https://github.com/dahliaOS/brand/blob/master/pangolin/svg/logotypeblacktext.svg#gh-light-mode-only"
-<p>
+  <img width="80%" src="https://github.com/dahliaOS/brand/blob/master/pangolin/svg/logotypewhitetext.svg#gh-dark-mode-only" />
+  <img width="80%" src="https://github.com/dahliaOS/brand/blob/master/pangolin/svg/logotypeblacktext.svg#gh-light-mode-only" />
+</p>
+ 
 <p align="center">
-  <img width="80%" src="https://github.com/dahliaOS/brand/blob/master/pangolin/svg/logotypewhitetext.svg#gh-dark-mode-only"
-<p>
-
-<p align="center">
-<a href="https://dahliaos.io">Website</a> ●
-<a href="https://dahliaos.io/discord">Discord</a> ●
-<a href="https://dahliaos.io/download">Releases</a> ●
-<a href="https://dahliaos.io/donate">Donate</a> ●
+<a href="https://dahliaos.io">Website</a> •
+<a href="https://dahliaos.io/discord">Discord</a> •
+<a href="https://dahliaos.io/download">Releases</a> •
+<a href="https://dahliaos.io/donate">Donate</a> •
 <a href="https://docs.dahliaos.io">Documentation</a>
 
-# Pangolin Desktop UI [![Tweet](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/intent/tweet?text=dahliaOS%20is%20a%20modern,%20secure,%20lightweight%20and%20responsive%20operating%20system,%20combining%20the%20best%20of%20GNU/Linux%20and%20Fuchsia%20OS&url=https://dahliaos.io&via=realdahliaos&hashtags=dahliaos,linux,zircon,flutter,dart,fuchsia,opensource)
-[![Build and Deploy to Web](https://github.com/dahliaOS/pangolin_desktop/actions/workflows/web.yml/badge.svg?branch=main)](https://github.com/dahliaOS/pangolin_desktop/actions/workflows/web.yml)
-[![Locale Generator](https://github.com/dahliaOS/pangolin_desktop/actions/workflows/locale_gen.yml/badge.svg?branch=main)](https://github.com/dahliaOS/pangolin_desktop/actions/workflows/locale_gen.yml)
-![Website](https://img.shields.io/website?url=https%3A%2F%2Fweb.dahliaos.io)
-[![Crowdin](https://badges.crowdin.net/e/1a53a75fb38f15843d4eb6d9b9e4215a/localized.svg)](https://translate.dahliaos.io/pangolin)
-![GitHub](https://img.shields.io/github/license/dahliaos/pangolin-desktop?color=brightgreen)
+# Pangolin Desktop
+[![Build and Deploy to Web](https://github.com/dahliaOS/pangolin_desktop/actions/workflows/web.yml/badge.svg)](https://github.com/dahliaOS/pangolin_desktop/actions/workflows/web.yml)
+[![Locale generator](https://github.com/dahliaOS/pangolin_desktop/actions/workflows/locale_gen.yml/badge.svg)](https://github.com/dahliaOS/pangolin_desktop/actions/workflows/locale_gen.yml)
+[![Demo](https://img.shields.io/website?label=Web%20Build&url=https%3A%2F%2Fweb.dahliaos.io&style=for-the-badge)](https://web.dahliaos.io)
+[![Crowdin](https://badges.crowdin.net/e/1a53a75fb38f15843d4eb6d9b9e4215a/localized.svg?style=for-the-badge)](https://translate.dahliaos.io/pangolin)
 
- - **Pangolin UI** is a Desktop shell for dahliaOS, written in Flutter, runs on Linux and Zircon
- - **Pangolin** was named after a shelled animal like the [Armadillo UI](https://9to5google.com/2018/12/26/fuchsia-armadillo-ui-gone/)
- - **Pangolin Desktop** is based on the deprecated Capybara shell, with a custom window management system built from the ground up
- - You can check it online [here](https://web.dahliaos.io)!
-
-<p align="center">
-  <img width="100%" src="https://docs.dahliaos.io/img/screenshot/22xxxx/settings.png"
-</p>
-
-> Pangolin Desktop, settings and start menu.
+ - 🖥 **Pangolin** is the desktop shell of dahliaOS.
+ - 💙 **Written** in Dart/Flutter.
+ - 🏝 **[Utopia](https://github.com/dahliaOS/utopia)** is the window manager of Pangolin.
+ - 🐚 **Pangolin** was named after a shelled animal like the [Armadillo UI](https://9to5google.com/2018/12/26/fuchsia-armadillo-ui-gone/).
+ - 🌐 **Check** the web preview [here](https://web.dahliaos.io).
 
 <p align="center">
-  <img width="100%" src="https://docs.dahliaos.io/img/screenshot/22xxxx/search.png"
+  <img width="100%" src="https://docs.dahliaos.io/docs/pangolin/settings.webp"
 </p>
 
-> Pangolin Desktop, Calculator, Terminal, Notes and search.
+> Settings and start menu, commit [876180d](https://github.com/dahliaOS/pangolin_desktop/commit/876180df15d3b6c8720fb7474d1bcf1b5202fc67).
 
-## Build Pangolin Desktop
+<p align="center">
+  <img width="100%" src="https://docs.dahliaos.io/docs/pangolin/search.webp"
+</p>
 
-### Prerequisites (On Debian/Ubuntu)
-```sudo apt install build-essential clang pkg-config libgtk-3-dev make cmake ninja-build```
-If you're interested in building Pangolin, you can refer to [Building and Running Pangolin](https://github.com/dahliaOS/pangolin_desktop/wiki/Compile-Pangolin-Desktop)
+> Calculator, Terminal, Notes and search, commit [876180d](https://github.com/dahliaOS/pangolin_desktop/commit/876180df15d3b6c8720fb7474d1bcf1b5202fc67).
+
+## Development
+
+To develop and locally test Pangolin:
+
+### Step 1. Install development tools
+
+1. Install [Flutter](https://docs.flutter.dev/get-started/install)
+2. Install an IDE of your choice (we recommend [VSCode](https://code.visualstudio.com/))
+    * We also recommend installing Dart and Flutter extensions if you're opting in for VSCode.
+    For other IDEs, please inform yourself.
+
+### Step 2. Run Pangolin
+
+**Note**: You can run Pangolin on any platform that Flutter supports but we recommend running it on Linux as some features of Pangolin are designed exclusively for Linux and won't work on other platforms.
+
+Run Pangolin by running:
+
+```
+make run target=linux
+```
+
+List of targets:
+- linux
+- windows
+- macos
+
+Flutter has hot reloading so no need to restart the instance when it's running!
 
 ## Contribute
 
@@ -50,15 +70,14 @@ If you're wondering how to contribute to the project, please refer to [CONTRIBUT
 
 If you're interested in translating Pangolin, click [here](https://github.com/dahliaOS/pangolin_desktop/blob/main/CONTRIBUTING.md#translations) for more information on how to do so!
 
+
 ## License
 
 <p align="left">
-  <img width="40%" src="https://raw.githubusercontent.com/dahliaOS/brand/master/dahliaOS/svg/logotypeblacktext.svg#gh-light-mode-only"
-<p>
-<p align="left">
-  <img width="40%" src="https://raw.githubusercontent.com/dahliaOS/brand/master/dahliaOS/svg/logotypewhitetext.svg#gh-dark-mode-only"
-<p>
+  <img width="30%" src="https://github.com/dahliaOS/brand/blob/main/dahliaOS/logotype/svg/logotype-dark.svg#gh-dark-mode-only"/>
+  <img width="30%" src="https://github.com/dahliaOS/brand/blob/main/dahliaOS/logotype/svg/logotype-light.svg#gh-light-mode-only"/>
+</p>
 
-Copyright @ 2019-2022 - The dahliaOS Authors - contact@dahliaos.io
+Copyright @ 2019-2023 - The dahliaOS Authors - contact@dahliaos.io
 
 This project is licensed under the [Apache 2.0 license](/LICENSE)

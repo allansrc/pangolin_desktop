@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import 'package:pangolin/components/shell/shell.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/material.dart';
+import 'package:pangolin/services/shell.dart';
+import 'package:pangolin/services/wm.dart';
 import 'package:pangolin/utils/wm/wm.dart';
-import 'package:pangolin/utils/wm/wm_api.dart';
 
 class ShowDesktopButton extends StatefulWidget {
-  const ShowDesktopButton({Key? key}) : super(key: key);
+  const ShowDesktopButton({super.key});
 
   @override
   State<ShowDesktopButton> createState() => _ShowDesktopButtonState();
@@ -32,7 +33,7 @@ class _ShowDesktopButtonState extends State<ShowDesktopButton> {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: LSX.desktop.miscShowDesktop,
+      message: strings.desktop.miscShowDesktop,
       child: InkWell(
         hoverColor: Colors.transparent,
         splashColor: Colors.transparent,
@@ -42,33 +43,28 @@ class _ShowDesktopButtonState extends State<ShowDesktopButton> {
           });
         },
         onTap: () {
-          Shell.of(context, listen: false).dismissEverything();
+          ShellService.current.dismissEverything();
           if (WindowHierarchy.of(context, listen: false)
               .entries
               .any((e) => e.layoutState.minimized == false)) {
-            WmAPI.of(context).minimizeAll();
+            WindowManagerService.current.minimizeEverything();
           } else {
-            WmAPI.of(context).undoMinimizeAll();
+            WindowManagerService.current.unminimizeEverything();
           }
         },
         child: SizedBox(
-          width: 8,
-          child: Stack(
-            children: [
-              Align(
-                alignment: Alignment.centerLeft,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    height: 20,
-                    width: 2,
-                    color: isHovered
-                        ? context.theme.textTheme.bodyText1?.color
-                        : Colors.transparent,
-                  ),
-                ),
-              )
-            ],
+          width: 16,
+          child: Center(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Container(
+                height: 20,
+                width: 2,
+                color: isHovered
+                    ? context.theme.textTheme.bodyLarge?.color
+                    : Colors.transparent,
+              ),
+            ),
           ),
         ),
       ),

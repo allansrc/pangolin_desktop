@@ -14,133 +14,93 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/material.dart';
 import 'package:pangolin/components/overlays/quick_settings/quick_settings_overlay.dart';
-import 'package:pangolin/components/shell/shell.dart';
 import 'package:pangolin/components/taskbar/taskbar_element.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/utils/other/date_time_manager.dart';
-import 'package:pangolin/utils/providers/connection_provider.dart';
-import 'package:pangolin/utils/providers/customization_provider.dart';
-import 'package:pangolin/utils/theme/theme_manager.dart';
+import 'package:pangolin/services/date_time.dart';
+import 'package:pangolin/services/power.dart';
+import 'package:pangolin/services/shell.dart';
+import 'package:pangolin/widgets/battery_indicator.dart';
+import 'package:pangolin/widgets/separated_flex.dart';
+import 'package:zenit_ui/zenit_ui.dart';
 
-class QuickSettingsButton extends StatelessWidget {
-  const QuickSettingsButton({Key? key}) : super(key: key);
+class QuickSettingsButton extends StatelessWidget
+    with StatelessServiceListener<CustomizationService> {
+  const QuickSettingsButton({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final _customizationProvider = CustomizationProvider.of(context);
-    final _connectionProv = ConnectionProvider.of(context);
+  Widget buildChild(BuildContext context, CustomizationService service) {
+    final theme = Theme.of(context);
     return TaskbarElement(
       iconSize: 18,
-      size: Size.fromWidth(
-        70 +
-            24 +
-            6 +
-            (_connectionProv.wifi ? 26 : 0) +
-            (_connectionProv.bluetooth ? 26 : 0) +
-            26 +
-            26,
-      ),
       overlayID: QuickSettingsOverlay.overlayId,
+      height: 40.0,
       child: Padding(
-        padding: const EdgeInsets.only(left: 8.0, right: 4.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: items(context)
-            ..add(
-              SizedBox(
-                width: 74,
-                child: Padding(
-                  padding: _customizationProvider.isTaskbarHorizontal
-                      ? const EdgeInsets.symmetric(horizontal: 8.0)
-                      : const EdgeInsets.symmetric(vertical: 8.0),
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: Shell.of(context)
-                        .getShowingNotifier(QuickSettingsOverlay.overlayId),
-                    builder: (context, showing, child) =>
-                        ValueListenableBuilder(
-                      valueListenable: DateTimeManager.getTimeNotifier()!,
-                      builder: (BuildContext context, String time, child) {
-                        return Text(
-                          time,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                            color: showing
-                                ? context.accentColor.computeLuminance() < 0.3
-                                    ? const Color(0xffffffff)
-                                    : const Color(0xff000000)
-                                : context.theme.darkMode
-                                    ? const Color(0xffffffff)
-                                    : const Color(0xff000000),
-                          ),
-                        );
-                      },
-                    ),
+        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+        child: ValueListenableBuilder<bool>(
+          valueListenable: ShellService.current
+              .getShowingNotifier(QuickSettingsOverlay.overlayId),
+          builder: (context, showing, child) {
+            final foregroundColor =
+                showing ? theme.accentForegroundColor : theme.foregroundColor;
+            return SeparatedFlex(
+              axis: Axis.horizontal,
+              separator: const SizedBox(width: 8),
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                ...items(context, foregroundColor, service),
+                VerticalDivider(
+                  width: 2,
+                  endIndent: 12,
+                  indent: 12,
+                  color: foregroundColor,
+                ),
+                SizedBox(
+                  child: ListenableServiceBuilder<DateTimeService>(
+                    builder: (BuildContext context, _) {
+                      final DateTimeService service = DateTimeService.current;
+                      return Text(
+                        service.formattedTime,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: foregroundColor,
+                        ),
+                      );
+                    },
                   ),
                 ),
-              ),
-            ),
+              ],
+            );
+          },
         ),
       ),
     );
   }
 
-  List<Widget> items(BuildContext context) {
-    final _customizationProvider = CustomizationProvider.of(context);
-    final _connectionProv = ConnectionProvider.of(context);
-
+  List<Widget> items(
+    BuildContext context,
+    Color foregroundColor,
+    CustomizationService service,
+  ) {
     return [
-      if (_connectionProv.wifi)
-        Padding(
-          padding: _customizationProvider.isTaskbarHorizontal
-              ? const EdgeInsets.symmetric(horizontal: 4.0)
-              : const EdgeInsets.symmetric(vertical: 4.0),
-          child: const Icon(
-            Icons.wifi,
-          ),
-        )
-      else
-        const SizedBox.shrink(),
-      if (_connectionProv.bluetooth)
-        Padding(
-          padding: _customizationProvider.isTaskbarHorizontal
-              ? const EdgeInsets.symmetric(horizontal: 4.0)
-              : const EdgeInsets.symmetric(vertical: 4.0),
-          child: const Icon(
-            Icons.bluetooth,
-          ),
-        )
-      else
-        const SizedBox.shrink(),
-      Padding(
-        padding: _customizationProvider.isTaskbarHorizontal
-            ? const EdgeInsets.symmetric(horizontal: 4.0)
-            : const EdgeInsets.symmetric(vertical: 4.0),
-        child: const Icon(
-          Icons.settings_ethernet,
+      if (service.enableWifi) const Icon(Icons.wifi),
+      if (service.enableBluetooth) const Icon(Icons.bluetooth),
+      const Icon(Icons.settings_ethernet),
+      if (PowerService.current.hasBattery)
+        PowerServiceBuilder(
+          builder: (context, child, percentage, charging, powerSaver) {
+            return BatteryIndicator(
+              percentage: percentage,
+              charging: charging,
+              color: foregroundColor,
+              powerSaving: powerSaver,
+              size: 18,
+            );
+          },
         ),
-      ),
-      Padding(
-        padding: _customizationProvider.isTaskbarHorizontal
-            ? const EdgeInsets.symmetric(horizontal: 4.0)
-            : const EdgeInsets.symmetric(vertical: 4.0),
-        child: const RotatedBox(
-          quarterTurns: 1,
-          child: Icon(
-            Icons.battery_charging_full,
-          ),
-        ),
-      ),
-      const SizedBox(width: 4),
-      Container(
-        width: 2,
-        height: 16,
-        decoration: BoxDecoration(
-          color: ThemeManager.of(context).foregroundColorOnAccentColor,
-          borderRadius: const BorderRadius.all(Radius.circular(4)),
-        ),
-      ),
     ];
   }
 }

@@ -14,43 +14,49 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import 'package:cached_network_image/cached_network_image.dart';
-
+import 'package:dahlia_shared/dahlia_shared.dart';
 import 'package:flutter/material.dart';
+import 'package:pangolin/utils/api_models/bing_wallpaper_api_model.dart';
+import 'package:pangolin/utils/api_models/wallpaper_api_model.dart';
 import 'package:pangolin/utils/data/globals.dart';
-import 'package:pangolin/utils/providers/customization_provider.dart';
-import 'package:pangolin/widgets/global/box/box_container.dart';
+import 'package:pangolin/widgets/resource/image/image.dart';
+import 'package:pangolin/widgets/surface/surface_layer.dart';
+import 'package:zenit_ui/zenit_ui.dart';
 
 class WallpaperPicker extends StatefulWidget {
-  const WallpaperPicker({
-    Key? key,
-  }) : super(key: key);
+  const WallpaperPicker({super.key});
 
   @override
   _WallpaperPickerState createState() => _WallpaperPickerState();
 }
 
 class _WallpaperPickerState extends State<WallpaperPicker>
-    with TickerProviderStateMixin {
+    with
+        TickerProviderStateMixin,
+        StateServiceListener<CustomizationService, WallpaperPicker> {
+  final TextEditingController _controller = TextEditingController();
   late TabController tabController;
+  late Future<List<Wallpaper>?> wallpapers;
+
   @override
   void initState() {
     super.initState();
-    tabController = TabController(length: 3, vsync: this);
+    tabController = TabController(length: 2, vsync: this);
+    wallpapers = getWallpapers();
   }
 
   @override
-  Widget build(BuildContext context) {
-    final _customizationProvider = CustomizationProvider.of(context);
-    final _controller = TextEditingController();
-    final List<String> _recentWallpapers = List.from(
-      _customizationProvider.recentWallpapers.reversed,
-      growable: true,
-    );
+  Widget buildChild(
+    BuildContext context,
+    CustomizationService service,
+  ) {
+    final List<ImageResource> recentWallpapers =
+        service.recentWallpapers.reversed.toList();
+
     return GestureDetector(
       onTap: () => Navigator.pop(context),
-      child: BoxSurface(
-        borderRadius: BorderRadius.circular(8),
+      child: SurfaceLayer(
+        shape: Constants.mediumShape,
         margin: const EdgeInsets.symmetric(horizontal: 300, vertical: 100),
         width: MediaQuery.of(context).size.width - 300,
         height: MediaQuery.of(context).size.height - 300,
@@ -65,26 +71,19 @@ class _WallpaperPickerState extends State<WallpaperPicker>
               physics: const BouncingScrollPhysics(),
               indicatorColor: Theme.of(context).colorScheme.secondary,
               labelColor: Theme.of(context).colorScheme.secondary,
-              labelStyle: Theme.of(context).textTheme.bodyText2?.copyWith(
+              labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
               unselectedLabelColor:
-                  Theme.of(context).textTheme.bodyText1?.color,
+                  Theme.of(context).textTheme.bodyLarge?.color,
               unselectedLabelStyle:
-                  Theme.of(context).textTheme.bodyText2?.copyWith(
+                  Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontWeight: FontWeight.normal,
                       ),
               controller: tabController,
               tabs: const [
-                Tab(
-                  text: "Default Wallpapers",
-                ),
-                Tab(
-                  text: "Wallpapers Repository",
-                ),
-                Tab(
-                  text: "Recent Wallpapers",
-                ),
+                Tab(text: "Default Wallpapers"),
+                Tab(text: "Recent Wallpapers"),
               ],
             ),
             content: SizedBox(
@@ -97,65 +96,88 @@ class _WallpaperPickerState extends State<WallpaperPicker>
                   //
                   //Default Wallpapers
                   //
-                  GridView.builder(
-                    physics: const BouncingScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 4,
-                      childAspectRatio: 16 / 9,
-                    ),
-                    itemCount: wallpapers.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      //_index = index;
-                      return Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: InkWell(
-                          onTap: () {
-                            _customizationProvider.wallpaper =
-                                wallpapers[index];
-                          },
-                          child: Stack(
-                            children: [
-                              Positioned.fill(
-                                child: Image.asset(
-                                  wallpapers[index],
-                                  fit: BoxFit.cover,
-                                  scale: 1.0,
-                                ),
-                              ),
-                              if (_customizationProvider.wallpaper ==
-                                  wallpapers[index])
-                                Positioned(
-                                  bottom: 5,
-                                  right: 5,
-                                  child: CircleAvatar(
-                                    backgroundColor:
-                                        Theme.of(context).colorScheme.secondary,
-                                    foregroundColor: Colors.white,
-                                    child: const Icon(Icons.check),
-                                  ),
-                                )
-                              else
-                                const SizedBox.shrink(),
-                            ],
-                          ),
+                  FutureBuilder<List<Wallpaper>?>(
+                    future: wallpapers,
+                    builder: (
+                      BuildContext context,
+                      AsyncSnapshot<List<Wallpaper>?> snapshot,
+                    ) {
+                      if (snapshot.data == null) {
+                        return const Text(
+                          "Loading the data from dahliaOS' GitHub Wallpaper repository API....",
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return const Text(
+                          "Error: Failed to fetch data from dahliaOS' GitHub Wallpaper repository API.",
+                        );
+                      }
+
+                      return GridView.builder(
+                        itemCount: snapshot.data!.length,
+                        physics: const BouncingScrollPhysics(),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 4,
+                          childAspectRatio: 16 / 9,
                         ),
+                        itemBuilder: (BuildContext context, int index) {
+                          return Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: InkWell(
+                              onTap: () {
+                                service.wallpaper = ImageResource(
+                                  type: ImageResourceType.network,
+                                  value: snapshot.data![index].downloadUrl,
+                                );
+                                service.addRecentWallpaper(service.wallpaper);
+                              },
+                              child: Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: ResourceImage(
+                                      resource: ImageResource(
+                                        type: ImageResourceType.network,
+                                        value:
+                                            snapshot.data![index].downloadUrl,
+                                      ),
+                                      fit: BoxFit.cover,
+                                    ),
+                                  ),
+                                  if (service.wallpaper ==
+                                      ImageResource(
+                                        type: ImageResourceType.network,
+                                        value:
+                                            snapshot.data![index].downloadUrl,
+                                      ))
+                                    Positioned(
+                                      bottom: 5,
+                                      right: 5,
+                                      child: CircleAvatar(
+                                        backgroundColor: Theme.of(context)
+                                            .colorScheme
+                                            .secondary,
+                                        foregroundColor: Colors.white,
+                                        child: const Icon(Icons.check),
+                                      ),
+                                    )
+                                  else
+                                    const SizedBox.shrink(),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
                       );
                     },
-                  ),
-                  //
-                  //TODO Wallpapers Repository
-                  //
-                  Container(
-                    color: Colors.green,
-                    child: const Center(child: Text("Coming Soon")),
                   ),
                   //
                   //Recent Wallpapers
                   //
                   GridView.builder(
                     physics: const BouncingScrollPhysics(),
-                    itemCount: _recentWallpapers.length,
+                    itemCount: recentWallpapers.length,
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 4,
@@ -166,10 +188,10 @@ class _WallpaperPickerState extends State<WallpaperPicker>
                         padding: const EdgeInsets.all(8.0),
                         child: InkWell(
                           mouseCursor: SystemMouseCursors.click,
-                          onTap: () => _customizationProvider.wallpaper =
-                              _recentWallpapers[index],
-                          child: CachedNetworkImage(
-                            errorWidget: (context, string, _) => Container(
+                          onTap: () =>
+                              service.wallpaper = recentWallpapers[index],
+                          child: ResourceImage(
+                            errorBuilder: (context, url, _) => ColoredBox(
                               color: Theme.of(context).colorScheme.secondary,
                               child: const Center(
                                 child: Text(
@@ -178,8 +200,7 @@ class _WallpaperPickerState extends State<WallpaperPicker>
                                 ),
                               ),
                             ),
-                            imageUrl: _recentWallpapers[index],
-                            cacheKey: _recentWallpapers[index],
+                            resource: recentWallpapers[index],
                             fit: BoxFit.cover,
                           ),
                         ),
@@ -193,10 +214,10 @@ class _WallpaperPickerState extends State<WallpaperPicker>
               Row(
                 children: [
                   //
-                  //Text Filed for Wallpaper URL
+                  //Text Field for Wallpaper URL
                   //
                   Expanded(
-                    child: TextField(
+                    child: ZenitTextField(
                       decoration: const InputDecoration(
                         contentPadding:
                             EdgeInsets.symmetric(vertical: 8, horizontal: 16),
@@ -206,8 +227,11 @@ class _WallpaperPickerState extends State<WallpaperPicker>
                       controller: _controller,
                       onSubmitted: (text) {
                         if (text.startsWith("http")) {
-                          _customizationProvider.wallpaper = text;
-                          _customizationProvider.addRecentWallpaper(text);
+                          service.wallpaper = ImageResource(
+                            type: ImageResourceType.network,
+                            value: text,
+                          );
+                          service.addRecentWallpaper(service.wallpaper);
                           Navigator.pop(context);
                         } else {
                           Navigator.pop(context);
@@ -226,13 +250,18 @@ class _WallpaperPickerState extends State<WallpaperPicker>
                       borderRadius: BorderRadius.circular(8),
                     ),
                     onPressed: () async {
-                      final bingresponse = await getBingWallpaper();
-                      _customizationProvider.wallpaper =
-                          'https://bing.com${bingresponse.images.first.url}';
-                      _customizationProvider.addRecentWallpaper(
-                        'https://bing.com${bingresponse.images.first.url}',
+                      final BingImageOfTheDay? wallpaper =
+                          await getBingWallpaper();
+
+                      if (wallpaper == null) return;
+
+                      service.wallpaper = ImageResource(
+                        type: ImageResourceType.network,
+                        value: wallpaper.images.first.url.toString(),
                       );
-                      Navigator.pop(context);
+                      service.addRecentWallpaper(service.wallpaper);
+
+                      if (mounted) Navigator.pop(context);
                     },
                     label: const Text(
                       "Use Bing Wallpaper",
@@ -253,7 +282,11 @@ class _WallpaperPickerState extends State<WallpaperPicker>
                     ),
                     onPressed: () {
                       if (_controller.text.startsWith("http")) {
-                        _customizationProvider.wallpaper = _controller.text;
+                        service.wallpaper = ImageResource(
+                          type: ImageResourceType.network,
+                          value: _controller.text,
+                        );
+                        service.addRecentWallpaper(service.wallpaper);
                         Navigator.pop(context);
                       } else {
                         Navigator.pop(context);

@@ -14,28 +14,27 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import 'package:pangolin/utils/extensions/extensions.dart';
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:zenit_ui/zenit_ui.dart';
 
 class QuickActionButton extends StatefulWidget {
   const QuickActionButton({
-    Key? key,
+    super.key,
     this.onPressed,
     this.title,
     this.leading,
     this.padding,
-    this.isCircular = true,
     this.textStyle,
-    this.margin,
+    this.margin = const EdgeInsets.symmetric(horizontal: 8.0),
     this.size,
-  }) : super(key: key);
+  });
 
   final VoidCallback? onPressed;
   final String? title;
   final Widget? leading;
   final EdgeInsetsGeometry? padding;
-  final bool? isCircular;
   final TextStyle? textStyle;
-  final EdgeInsetsGeometry? margin;
+  final EdgeInsetsGeometry margin;
   final double? size;
 
   @override
@@ -49,36 +48,33 @@ class _QuickActionButtonState extends State<QuickActionButton> {
     final bool leadingIsNull = widget.leading == null;
 
     return Padding(
-      padding: widget.margin ?? const EdgeInsets.symmetric(horizontal: 8.0),
+      padding: widget.margin,
       child: SizedBox(
         height: widget.size ?? 40,
-        width: widget.isCircular == true ? widget.size ?? 40 : null,
+        width: titleIsNull ? widget.size ?? 40 : null,
         child: Material(
           clipBehavior: Clip.antiAlias,
-          color: context.theme.darkMode
-              ? ColorsX.black.op(0.5)
-              : ColorsX.white.op(0.5),
-          borderRadius: BorderRadius.circular(32),
+          color: Theme.of(context).surfaceColor,
+          shape: Constants.circularShape,
           child: InkWell(
-            onTap: () => widget.onPressed?.call(),
+            onTap: widget.onPressed,
             child: Padding(
               padding: widget.padding ??
                   EdgeInsets.symmetric(
-                    horizontal: !titleIsNull ? 12.0 : 8.0,
+                    horizontal: titleIsNull ? 8.0 : 12.0,
                     vertical: 8.0,
                   ),
               child: IconTheme.merge(
-                data: IconThemeData(
-                  color: context.theme.darkMode ? ColorsX.white : ColorsX.black,
+                data: const IconThemeData(
                   size: 18,
                 ),
                 child: DefaultTextStyle(
                   style: widget.textStyle ??
-                      context.theme.textTheme.bodyText1!.copyWith(
-                        fontSize: 13,
+                      context.theme.textTheme.bodyLarge!.copyWith(
+                        fontSize: 12,
                         fontWeight: FontWeight.normal,
                       ),
-                  child: !(widget.isCircular == true)
+                  child: !titleIsNull
                       ? Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [

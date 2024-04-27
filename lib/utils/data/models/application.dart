@@ -14,15 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 import 'package:flutter/material.dart';
-import 'package:pangolin/components/shell/shell.dart';
-import 'package:pangolin/utils/wm/wm_api.dart';
+import 'package:pangolin/services/application.dart';
+import 'package:pangolin/services/shell.dart';
 
 class Application {
-  final String? name;
+  final String name;
   final String? version;
   final String? description;
   final String packageName;
-  final Widget? app;
+  final Widget app;
   final ApplicationCategory? category;
   final bool isTest;
   final String? iconName;
@@ -64,8 +64,8 @@ class Application {
   });
 
   void launch(BuildContext context) {
-    Shell.of(context, listen: false).dismissEverything();
-    WmAPI.of(context).openApp(packageName);
+    ShellService.current.dismissEverything();
+    ApplicationService.current.startApp(packageName);
   }
 }
 

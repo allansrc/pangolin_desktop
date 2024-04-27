@@ -13,109 +13,107 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import 'dart:io' show Platform;
 
-import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:pangolin/components/settings/data/presets.dart';
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import "package:intl/locale.dart" as intl;
 import 'package:pangolin/components/shell/desktop.dart';
-import 'package:pangolin/services/locales/generated_asset_loader.g.dart';
-import 'package:pangolin/services/visual_engine/visual_engine.dart';
-import 'package:pangolin/utils/data/dap_index.dart';
-import 'package:pangolin/utils/data/database_manager.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/utils/other/date_time_manager.dart';
-import 'package:pangolin/utils/providers/clock_provider.dart';
-import 'package:pangolin/utils/providers/connection_provider.dart';
-import 'package:pangolin/utils/providers/customization_provider.dart';
-import 'package:pangolin/utils/providers/icon_provider.dart';
-import 'package:pangolin/utils/providers/io_provider.dart';
-import 'package:pangolin/utils/providers/misc_provider.dart';
-import 'package:pangolin/utils/providers/search_provider.dart';
-import 'package:pangolin/utils/theme/theme.dart';
-import 'package:provider/provider.dart';
+import 'package:pangolin/services/application.dart';
+import 'package:pangolin/services/date_time.dart';
+import 'package:pangolin/services/icon.dart';
+import 'package:pangolin/services/langpacks.dart';
+import 'package:pangolin/services/notifications.dart';
+import 'package:pangolin/services/power.dart';
+import 'package:pangolin/services/search.dart';
+import 'package:pangolin/services/shell.dart';
+import 'package:pangolin/services/tray.dart';
+import 'package:pangolin/services/wm.dart';
+import 'package:pangolin/utils/other/logging.dart';
+import 'package:yatl_flutter/yatl_flutter.dart';
+import 'package:zenit_ui/zenit_ui.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  //initialize the database
-  await DatabaseManager.initialseDatabase();
-  //PreferenceProvider();
-
-  //initialize scheduler for time and date
-  DateTimeManager.initialiseScheduler();
-
-  //initialize the localization engine
-  await EasyLocalization.ensureInitialized();
-
-  //load customization presets
-  SettingsPresets.loadPresets();
-
-  //load visual engine
-  await loadVisualEngine();
-  if (kIsWeb == false) {
-    if (Platform.isLinux) {
-      indexApplications();
-    }
-  }
+  setupLogger();
 
   runApp(
-    EasyLocalization(
-      supportedLocales: Locales.supported,
-      fallbackLocale: const Locale("en", "US"),
-      useFallbackTranslations: true,
-      assetLoader: GeneratedAssetLoader(),
-      path: "assets/locales",
-      startLocale: const Locale("en", "US"),
-      saveLocale: false,
-      child: MultiProvider(
-        providers: [
-          /* ChangeNotifierProvider<PreferenceProvider>.value(
-            value: PreferenceProvider(),
-          ),
-          ChangeNotifierProvider<FeatureFlags>.value(
-            value: FeatureFlags(),
-          ), */
-          ChangeNotifierProvider<IconProvider>.value(
-            value: IconProvider(),
-          ),
-          ChangeNotifierProvider<IOProvider>.value(
-            value: IOProvider(),
-          ),
-          ChangeNotifierProvider<CustomizationProvider>.value(
-            value: CustomizationProvider(),
-          ),
-          ChangeNotifierProvider<MiscProvider>.value(
-            value: MiscProvider(),
-          ),
-          ChangeNotifierProvider<ClockProvider>.value(
-            value: ClockProvider(),
-          ),
-          ChangeNotifierProvider<ConnectionProvider>.value(
-            value: ConnectionProvider(),
-          ),
-          ChangeNotifierProvider<SearchProvider>.value(
-            value: SearchProvider(),
-          ),
-        ],
-        child: const Pangolin(),
-      ),
+    ServiceBuilderWidget(
+      services: const [
+        ServiceEntry<ShellService>.critical(ShellServiceFactory()),
+        ServiceEntry<LocaleService>.critical(LocaleServiceFactory()),
+        ServiceEntry<SearchService>(SearchServiceFactory()),
+        ServiceEntry<WindowManagerService>.critical(
+          WindowManagerServiceFactory(),
+        ),
+        ServiceEntry<LangPacksService>(LangPacksServiceFactory()),
+        ServiceEntry<ApplicationService>(ApplicationServiceFactory()),
+        ServiceEntry<IconService>(IconServiceFactory()),
+        ServiceEntry<PreferencesService>.critical(PreferencesServiceFactory()),
+        ServiceEntry<TrayService>(TrayServiceFactory()),
+        ServiceEntry<NotificationService>(NotificationServiceFactory()),
+        ServiceEntry<PowerService>(PowerServiceFactory()),
+        ServiceEntry<CustomizationService>.critical(
+          CustomizationServiceFactory(),
+        ),
+        ServiceEntry<DateTimeService>.critical(DateTimeServiceFactory()),
+      ],
+      builder: (context, loaded, child) {
+        if (!loaded) return const ColoredBox(color: Colors.black);
+        if (kIsWeb) BrowserContextMenu.disableContextMenu();
+
+        return ListenableServiceBuilder<CustomizationService>(
+          builder: (context, child) {
+            final CustomizationService service = CustomizationService.current;
+            return YatlApp(
+              core: yatl,
+              getLocale: () =>
+                  intl.Locale.tryParse(service.locale)?.toFlutterLocale(),
+              setLocale: (locale) => service.locale = locale?.toString(),
+              child: child!,
+            );
+          },
+          child: child,
+        );
+      },
+      child: const Pangolin(),
     ),
   );
 }
 
 class Pangolin extends StatelessWidget {
-  const Pangolin({Key? key}) : super(key: key);
+  const Pangolin({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      //debugShowCheckedModeBanner: false,
-      home: const Desktop(),
-      theme: theme(context),
-      locale: context.locale,
-      localizationsDelegates: context.localizationDelegates,
-      supportedLocales: context.supportedLocales,
+    return ListenableServiceBuilder<CustomizationService>(
+      builder: (context, child) {
+        return MaterialApp(
+          home: child,
+          theme: createZenitTheme(
+            primaryColor: CustomizationService.current.accentColor.resolve(),
+          ),
+          darkTheme: createZenitTheme(
+            brightness: Brightness.dark,
+            primaryColor: CustomizationService.current.accentColor.resolve(),
+          ),
+          themeMode: CustomizationService.current.darkMode
+              ? ThemeMode.dark
+              : ThemeMode.light,
+          supportedLocales: context.supportedLocales,
+          locale: context.locale,
+          localizationsDelegates: [
+            GlobalWidgetsLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+            context.localizationsDelegate,
+          ],
+          debugShowCheckedModeBanner: false,
+        );
+      },
+      child: const Desktop(),
     );
   }
 }

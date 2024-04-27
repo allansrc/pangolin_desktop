@@ -14,20 +14,21 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pangolin/utils/context_menus/context_menu.dart';
-import 'package:pangolin/utils/context_menus/context_menu_item.dart';
-import 'package:pangolin/utils/context_menus/core/context_menu_region.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/utils/providers/customization_provider.dart';
+import 'package:pangolin/components/shell/effects.dart';
 import 'package:pangolin/utils/wm/wm.dart';
+import 'package:pangolin/widgets/context_menu.dart';
+import 'package:zenit_ui/zenit_ui.dart';
 
 class PangolinWindowToolbar extends StatefulWidget {
+  static const double dockEdgeSize = 40;
+
   const PangolinWindowToolbar({
-    Key? key,
+    super.key,
     required this.barColor,
     required this.textColor,
-  }) : super(key: key);
+  });
 
   final Color barColor;
   final Color textColor;
@@ -40,88 +41,77 @@ class _PangolinWindowToolbarState extends State<PangolinWindowToolbar> {
   SystemMouseCursor _cursor = SystemMouseCursors.move;
   // ignore: unused_field
   late DragUpdateDetails _lastDetails;
+  WindowDock? _draggingDock;
 
   @override
   Widget build(BuildContext context) {
+    final hierarchy = WindowHierarchy.of(context);
     final properties = WindowPropertyRegistry.of(context);
     final layout = LayoutState.of(context);
-    final fgColor = !context.theme.darkMode ? Colors.grey[900]! : Colors.white;
-    final _customizationProvider = CustomizationProvider.of(context);
+    final fgColor =
+        !Theme.of(context).darkMode ? Colors.grey[900]! : Colors.white;
 
     return GestureDetector(
-      child: ContextMenuRegion(
-        contextMenu: ContextMenu(
-          items: [
-            ContextMenuItem(
-              icon: Icons.close,
-              //TODO Localize
-              title: "Close Window",
-              onTap: () => onClose(properties),
-              shortcut: "",
-            ),
-            ContextMenuItem(
-              icon: Icons.minimize,
-              //TODO Localize
-              title: "Minimize Window",
-              onTap: () => onMinimize(properties, layout),
-              shortcut: "",
-            ),
-            ContextMenuItem(
-              icon: Icons.info_outline_rounded,
-              //TODO Localize
-              title: "App Info",
-              onTap: () {
-                showDialog(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    elevation: 1.0,
-                    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                    content: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (properties.info.icon != null)
-                          Image(image: properties.info.icon!)
-                        else
-                          const Icon(Icons.apps),
-                        const SizedBox(
-                          height: 16,
-                        ),
-                        Text(properties.info.title)
-                      ],
-                    ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                        },
-                        child: const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: Text("Close"),
-                        ),
-                      )
+      child: ContextMenu(
+        entries: [
+          ContextMenuItem(
+            leading: const Icon(Icons.close),
+            //TODO Localize
+            child: const Text("Close Window"),
+            onTap: () => onClose(properties),
+          ),
+          ContextMenuItem(
+            leading: const Icon(Icons.minimize),
+            //TODO Localize
+            child: const Text("Minimize Window"),
+            onTap: () => onMinimize(properties, layout),
+          ),
+          ContextMenuItem(
+            leading: const Icon(Icons.info_outline_rounded),
+            //TODO Localize
+            child: const Text("App Info"),
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  elevation: 1.0,
+                  backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (properties.info.icon != null)
+                        Image(image: properties.info.icon!)
+                      else
+                        const Icon(Icons.apps),
+                      const SizedBox(
+                        height: 16,
+                      ),
+                      Text(properties.info.title)
                     ],
                   ),
-                );
-              },
-              shortcut: "",
-            ),
-          ],
-        ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: Text("Close"),
+                      ),
+                    )
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
         child: SizedBox(
           height: 40,
           child: Material(
-            color: _customizationProvider.coloredTitlebars
-                ? widget.barColor.op(
-                    _customizationProvider.transparentColoredTitlebars
-                        ? 0.5
-                        : 1.0,
-                  )
-                : Colors.transparent,
+            type: MaterialType.transparency,
             child: IconTheme.merge(
               data: IconThemeData(
-                color: _customizationProvider.coloredTitlebars
-                    ? widget.textColor
-                    : fgColor,
+                color: fgColor,
                 size: 20,
               ),
               child: Stack(
@@ -178,9 +168,7 @@ class _PangolinWindowToolbarState extends State<PangolinWindowToolbar> {
                     child: Text(
                       properties.info.title,
                       style: TextStyle(
-                        color: _customizationProvider.coloredTitlebars
-                            ? widget.textColor
-                            : fgColor,
+                        color: fgColor,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -199,6 +187,10 @@ class _PangolinWindowToolbarState extends State<PangolinWindowToolbar> {
                           });
                         },
                         onPanStart: (details) {
+                          _draggingDock = WindowDock.none;
+                          final layer = EffectsLayer.of(context);
+                          layer?.startDockEffect(layout);
+
                           if (layout.dock != WindowDock.none) {
                             layout.dock = WindowDock.none;
                             layout.position = details.globalPosition +
@@ -211,7 +203,12 @@ class _PangolinWindowToolbarState extends State<PangolinWindowToolbar> {
                         onDoubleTap: () => onDoubleTap(layout),
                         onPanUpdate: (details) =>
                             onDrag(details, properties, layout),
-                        onPanEnd: onDragEnd,
+                        onPanEnd: (details) => onDragEnd(
+                          details,
+                          hierarchy,
+                          properties,
+                          layout,
+                        ),
                       ),
                     ),
                   ),
@@ -249,41 +246,13 @@ class _PangolinWindowToolbarState extends State<PangolinWindowToolbar> {
       _cursor = SystemMouseCursors.move;
     });
     _lastDetails = details;
-    /* final hierarchy = context.read<WindowHierarchyState>();
-    final docked = entry.maximized || layout.dock != WindowDock.NORMAL;
-    double dockedToolbarOffset;
-
-    switch (layout.dock) {
-      case WindowDock.TOP:
-      case WindowDock.TOP_LEFT:
-      case WindowDock.TOP_RIGHT:
-      case WindowDock.LEFT:
-      case WindowDock.RIGHT:
-        dockedToolbarOffset = 0;
-        break;
-      case WindowDock.BOTTOM:
-      case WindowDock.BOTTOM_LEFT:
-      case WindowDock.BOTTOM_RIGHT:
-        dockedToolbarOffset =
-            hierarchy.wmRect.top + hierarchy.wmRect.height / 2;
-        break;
-      case WindowDock.NORMAL:
-      default:
-        dockedToolbarOffset = 0;
-        break;
+    final WindowDock dock =
+        _getDockForPosition(hierarchy.wmBounds, details.globalPosition);
+    if (_draggingDock != dock) {
+      _draggingDock = dock;
+      final layer = EffectsLayer.of(context);
+      layer?.updateDockEffect(dock);
     }
-
-    Rect base = Rect.fromLTWH(
-      docked
-          ? details.globalPosition.dx - entry.windowRect.width / 2
-          : entry.windowRect.left,
-      docked ? dockedToolbarOffset : entry.windowRect.top,
-      entry.windowRect.width,
-      entry.windowRect.height,
-    );
-    hierarchy.requestWindowFocus(entry);
-    entry.maximized = false;
-    layout.dock = WindowDock.NORMAL; */
 
     layout.position += details.delta;
     layout.position = Offset(
@@ -296,58 +265,78 @@ class _PangolinWindowToolbarState extends State<PangolinWindowToolbar> {
     setState(() {});
   }
 
-  void onDragEnd(DragEndDetails details) {
+  WindowDock _getDockForPosition(Rect bounds, Offset position) {
+    final Rect topLeft = Rect.fromLTWH(
+      bounds.left,
+      bounds.top,
+      PangolinWindowToolbar.dockEdgeSize,
+      PangolinWindowToolbar.dockEdgeSize,
+    );
+    final Rect left = Rect.fromLTWH(
+      bounds.left,
+      bounds.top + PangolinWindowToolbar.dockEdgeSize,
+      PangolinWindowToolbar.dockEdgeSize,
+      bounds.height - PangolinWindowToolbar.dockEdgeSize * 2,
+    );
+    final Rect bottomLeft = Rect.fromLTWH(
+      bounds.left,
+      bounds.bottom - PangolinWindowToolbar.dockEdgeSize,
+      PangolinWindowToolbar.dockEdgeSize,
+      PangolinWindowToolbar.dockEdgeSize,
+    );
+    final Rect topRight = Rect.fromLTWH(
+      bounds.right - PangolinWindowToolbar.dockEdgeSize,
+      bounds.top,
+      PangolinWindowToolbar.dockEdgeSize,
+      PangolinWindowToolbar.dockEdgeSize,
+    );
+    final Rect right = Rect.fromLTWH(
+      bounds.right - PangolinWindowToolbar.dockEdgeSize,
+      bounds.top + PangolinWindowToolbar.dockEdgeSize,
+      PangolinWindowToolbar.dockEdgeSize,
+      bounds.height - PangolinWindowToolbar.dockEdgeSize * 2,
+    );
+    final Rect bottomRight = Rect.fromLTWH(
+      bounds.right - PangolinWindowToolbar.dockEdgeSize,
+      bounds.bottom - PangolinWindowToolbar.dockEdgeSize,
+      PangolinWindowToolbar.dockEdgeSize,
+      PangolinWindowToolbar.dockEdgeSize,
+    );
+    final Rect maximized = Rect.fromLTWH(
+      bounds.left + PangolinWindowToolbar.dockEdgeSize,
+      bounds.top,
+      bounds.width - PangolinWindowToolbar.dockEdgeSize * 2,
+      PangolinWindowToolbar.dockEdgeSize,
+    );
+
+    if (topLeft.contains(position)) return WindowDock.topLeft;
+    if (left.contains(position)) return WindowDock.left;
+    if (bottomLeft.contains(position)) return WindowDock.bottomLeft;
+
+    if (topRight.contains(position)) return WindowDock.topRight;
+    if (right.contains(position)) return WindowDock.right;
+    if (bottomRight.contains(position)) return WindowDock.bottomRight;
+
+    if (maximized.contains(position)) return WindowDock.maximized;
+
+    return WindowDock.none;
+  }
+
+  void onDragEnd(
+    DragEndDetails details,
+    WindowHierarchyController hierarchy,
+    WindowPropertyRegistry properties,
+    LayoutState layout,
+  ) {
     setState(() {
       _cursor = SystemMouseCursors.click;
     });
-    /* final entry = context.read<WindowEntry>();
-    final rect = context.read<WindowHierarchyState>().wmRect;
-    final topEdge = _lastDetails.globalPosition.dy <= rect.top + 2;
-    final leftEdge = _lastDetails.globalPosition.dx <= rect.left + 2;
-    final rightEdge = _lastDetails.globalPosition.dx >= rect.right - 2;
-
-    if (topEdge && _lastDetails.globalPosition.dx <= rect.left + 2 ||
-        _lastDetails.globalPosition.dy <= rect.top + 50 && leftEdge) {
-      entry.windowDock = WindowDock.TOP_LEFT;
-      return;
-    }
-
-    if (topEdge && _lastDetails.globalPosition.dx >= rect.right - 50 ||
-        _lastDetails.globalPosition.dy <= rect.top + 50 && rightEdge) {
-      entry.windowDock = WindowDock.TOP_RIGHT;
-      return;
-    }
-
-    if (topEdge && _lastDetails.globalPosition.dx <= rect.left + 2 ||
-        _lastDetails.globalPosition.dy <= rect.top + 50 && leftEdge) {
-      entry.windowDock = WindowDock.TOP_LEFT;
-      return;
-    }
-
-    if (leftEdge && _lastDetails.globalPosition.dy >= rect.bottom - 50) {
-      entry.windowDock = WindowDock.BOTTOM_LEFT;
-      return;
-    }
-
-    if (rightEdge && _lastDetails.globalPosition.dy >= rect.bottom - 50) {
-      entry.windowDock = WindowDock.BOTTOM_RIGHT;
-      return;
-    }
-
-    if (topEdge) {
-      entry.maximized = true;
-      return;
-    }
-
-    if (leftEdge) {
-      entry.windowDock = WindowDock.LEFT;
-      return;
-    }
-
-    if (rightEdge) {
-      entry.windowDock = WindowDock.RIGHT;
-      return;
-    } */
+    final WindowDock dock =
+        _getDockForPosition(hierarchy.wmBounds, _lastDetails.globalPosition);
+    layout.dock = dock;
+    final layer = EffectsLayer.of(context);
+    layer?.endDockEffect();
+    _draggingDock = null;
   }
 
   void onDoubleTap(LayoutState layout) {
@@ -365,11 +354,11 @@ class WindowToolbarButton extends StatelessWidget {
   final Color? hoverColor;
 
   const WindowToolbarButton({
-    Key? key,
+    super.key,
     required this.icon,
     required this.onTap,
     this.hoverColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -397,11 +386,8 @@ class WindowToolbarButton extends StatelessWidget {
 class _ToolbarIcons {
   _ToolbarIcons._();
 
-  static const _kFontFam = 'CustomIcons';
-  static const _kFontPkg = 'utopia_wm';
+  static const String _kFontFam = 'CustomIcons';
 
-  static const IconData maximize =
-      IconData(0xe800, fontFamily: _kFontFam, fontPackage: _kFontPkg);
-  static const IconData minimize =
-      IconData(0xe801, fontFamily: _kFontFam, fontPackage: _kFontPkg);
+  static const IconData maximize = IconData(0xe800, fontFamily: _kFontFam);
+  static const IconData minimize = IconData(0xe801, fontFamily: _kFontFam);
 }

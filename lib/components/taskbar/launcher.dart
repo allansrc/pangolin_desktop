@@ -14,82 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/material.dart';
 import 'package:pangolin/components/overlays/launcher/compact_launcher_overlay.dart';
-import 'package:pangolin/components/overlays/launcher/launcher_overlay.dart';
 import 'package:pangolin/components/taskbar/taskbar_element.dart';
-import 'package:pangolin/utils/context_menus/context_menu.dart';
-import 'package:pangolin/utils/context_menus/context_menu_item.dart';
-import 'package:pangolin/utils/context_menus/core/context_menu_region.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/utils/providers/customization_provider.dart';
-import 'package:pangolin/utils/providers/misc_provider.dart';
-import 'package:provider/provider.dart';
+import 'package:pangolin/widgets/resource/icon/icon.dart';
 
-//TODO: Context menu for changing the taskbar's icon is cut off.
 class LauncherButton extends StatelessWidget {
-  const LauncherButton({Key? key}) : super(key: key);
+  const LauncherButton({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final _customizationProvider = CustomizationProvider.of(context);
-
-    return ContextMenuRegion(
-      centerAboveElement: true,
-      contextMenu: ContextMenu(
-        items: [
-          ContextMenuItem(
-            icon: Icons.apps_rounded,
-            title: "Icon 1",
-            onTap: () {
-              _customizationProvider.launcherIcon =
-                  Icons.apps_rounded.codePoint;
-            },
-            shortcut: "",
-          ),
-          ContextMenuItem(
-            icon: Icons.panorama_fish_eye,
-            title: "Icon 2",
-            onTap: () {
-              _customizationProvider.launcherIcon =
-                  Icons.panorama_fish_eye.codePoint;
-            },
-            shortcut: "",
-          ),
-          ContextMenuItem(
-            icon: Icons.brightness_low,
-            title: "Icon 3",
-            onTap: () {
-              _customizationProvider.launcherIcon =
-                  Icons.brightness_low.codePoint;
-            },
-            shortcut: "",
-          ),
-          ContextMenuItem(
-            icon: Icons.radio_button_checked,
-            title: "Icon 4",
-            onTap: () {
-              _customizationProvider.launcherIcon =
-                  Icons.radio_button_checked.codePoint;
-            },
-            shortcut: "",
-          ),
-        ],
-      ),
-      child: Consumer(
-        builder: (context, MiscProvider provider, _) {
-          return TaskbarElement(
-            overlayID: provider.compactLauncher
-                ? CompactLauncherOverlay.overlayId
-                : LauncherOverlay.overlayId,
-            child: Icon(
-              IconData(
-                _customizationProvider.launcherIcon,
-                fontFamily: "MaterialIcons",
-              ),
-              //size: 24,
-            ),
-          );
-        },
+    return const TaskbarElement(
+      overlayID: CompactLauncherOverlay.overlayId,
+      child: ResourceIcon(
+        resource: IconResource(
+          type: IconResourceType.dahlia,
+          value: "launcher_1",
+        ),
       ),
     );
   }

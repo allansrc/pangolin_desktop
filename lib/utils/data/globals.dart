@@ -14,12 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:http/http.dart';
 import 'package:pangolin/utils/api_models/bing_wallpaper_api_model.dart';
+import 'package:pangolin/utils/api_models/wallpaper_api_model.dart';
 import 'package:pangolin/utils/wm/wm.dart';
 
 String totalVersionNumber = "220222";
@@ -42,7 +44,7 @@ String get kernel {
 String get architecture {
   if (!kIsWeb) {
     if (!Platform.isWindows) {
-      final ProcessResult result = Process.runSync('uname', ['-p']);
+      final ProcessResult result = Process.runSync('uname', ['-m']);
       final String architechtureString = result.stdout.toString();
       return architechtureString.replaceAll('\n', '');
     } else {
@@ -78,22 +80,29 @@ double verticalPadding(BuildContext context, double size) =>
 
 List<String> timeZones = [];
 
-List<String> wallpapers = [
-  "assets/images/wallpapers/dahliaOS_white_logo_pattern_wallpaper.png",
-  "assets/images/wallpapers/dahliaOS_white_wallpaper.png",
-  "assets/images/wallpapers/Gradient_logo_wallpaper.png",
-  "assets/images/wallpapers/Three_Bubbles.png",
-  "assets/images/wallpapers/Bubbles_wallpaper.png",
-  "assets/images/wallpapers/Mountains_wallpaper.png",
-  "assets/images/wallpapers/mountain.jpg",
-  "assets/images/wallpapers/forest.jpg",
-  "assets/images/wallpapers/modern.png",
-  "assets/images/wallpapers/modern_dark.png",
-  "assets/images/wallpapers/wood.jpg",
-  "assets/images/wallpapers/beach.jpg",
-];
+Future<List<Wallpaper>?> getWallpapers() async {
+  final response = await get(
+    Uri.parse(
+      'https://api.github.com/repos/dahliaOS/wallpapers/contents/Official/Desktop/PNG?ref=main',
+    ),
+    headers: {
+      "Access-Control-Allow-Origin": "true",
+      "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE, HEAD",
+    },
+  );
 
-Future<BingWallpaper> getBingWallpaper() async {
+  if (response.statusCode == 200) {
+    return wallpaperParser
+        .validate(jsonDecode(response.body))
+        ?.cast<Wallpaper>();
+  } else {
+    throw Exception(
+      "Failed to fetch data from dahliaOS' GitHub Wallpaper repository API.",
+    );
+  }
+}
+
+Future<BingImageOfTheDay?> getBingWallpaper() async {
   final response = await get(
     Uri.parse(
       'http://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=en-US',
@@ -103,8 +112,9 @@ Future<BingWallpaper> getBingWallpaper() async {
       "Access-Control-Allow-Methods": "POST, GET, OPTIONS, PUT, DELETE, HEAD",
     },
   );
+
   if (response.statusCode == 200) {
-    return bingWallpaperFromJson(response.body);
+    return bingParser.validate(jsonDecode(response.body));
   } else {
     throw Exception(
       "Failed to fetch data from the Bing's Wallpaper of the Day API.",

@@ -14,22 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import 'package:easy_localization/easy_localization.dart';
-import 'package:flag/flag.dart';
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/material.dart';
+import 'package:pangolin/components/overlays/quick_settings/quick_settings_overlay.dart';
 import 'package:pangolin/components/overlays/quick_settings/widgets/qs_titlebar.dart';
-import 'package:pangolin/services/locales/native_names.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/widgets/global/quick_button.dart';
+import 'package:pangolin/utils/data/native_names.dart';
+import 'package:pangolin/widgets/quick_button.dart';
+import 'package:yatl_flutter/yatl_flutter.dart';
 
 class QsLanguagePage extends StatelessWidget {
+  // ignore: use_super_parameters
   const QsLanguagePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const QsTitlebar(
-        title: "Languages",
-        trailing: [
+      appBar: QsTitlebar(
+        title: strings.quicksettingsOverlay.quickControlsLanguageTitle,
+        trailing: const [
           QuickActionButton(
             leading: Icon(
               Icons.help_outline_rounded,
@@ -42,25 +44,46 @@ class QsLanguagePage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
         child: ListView.builder(
-          itemCount: Locales.supported.length,
+          itemCount: locales.supportedLocales.length,
           itemBuilder: (context, index) {
+            final int? translatedStrings = locales
+                .progressData[locales.supportedLocales[index].toLanguageTag()];
+            final int? totalTranslationStrings =
+                locales.progressData[context.fallbackLocale.toLanguageTag()];
+            final double translationPercentage =
+                translatedStrings! / totalTranslationStrings! * 100;
             return ListTile(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
               ),
-              leading: Flag.fromString(
-                Locales.supported[index].languageCode.replaceAll("en", "us"),
-                width: 32,
-                replacement: const Icon(Icons.language_outlined),
+              leading: Text(
+                // Select every supported locale's country code.
+                locales.supportedLocales[index].countryCode!.replaceAllMapped(
+                  //  Select each character with regex.
+                  RegExp('[A-Z]'),
+                  // Convert the regional indicator symbols' values to a string (flag emoji).
+                  (match) => String.fromCharCode(
+                    // .codeUnitAt(0) converts each character to a rune.
+                    // By adding to 127397 we are converting each rune to a regional indicator symbol.
+                    // The 127397 comes from the Regional Indicator Symbol 🇦's HTML code, 127462, minus the rune value of A, 65.
+                    match.group(0)!.codeUnitAt(0) + 127397,
+                  ),
+                ),
+                style: const TextStyle(
+                  fontSize: 30,
+                ),
               ),
               title: Text(
-                localeNativeNames[Locales.supported[index].languageCode] ??
+                localeNativeNames[
+                        locales.supportedLocales[index].languageCode] ??
                     "Language code not found",
               ),
-              subtitle: Text(Locales.supported[index].languageCode),
+              subtitle: Text(locales.supportedLocales[index].toLanguageTag()),
+              trailing: Text("${translationPercentage.toStringAsFixed(0)}%"),
               onTap: () {
-                context.setLocale(Locales.supported[index]);
-                //Navigator.pop(context);
+                context.locale = context.supportedLocales[index];
+
+                QsController.popRoute(context);
               },
             );
           },

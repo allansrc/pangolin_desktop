@@ -14,26 +14,26 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/material.dart';
 import 'package:pangolin/components/desktop/wallpaper.dart';
-import 'package:pangolin/components/desktop/welcome_screen.dart';
+import 'package:pangolin/components/overlays/account_overlay.dart';
 import 'package:pangolin/components/overlays/launcher/compact_launcher_overlay.dart';
-import 'package:pangolin/components/overlays/launcher/launcher_overlay.dart';
+import 'package:pangolin/components/overlays/notifications/overlay.dart';
 import 'package:pangolin/components/overlays/overview_overlay.dart';
 import 'package:pangolin/components/overlays/power_overlay.dart';
 import 'package:pangolin/components/overlays/quick_settings/quick_settings_overlay.dart';
 import 'package:pangolin/components/overlays/search/search_overlay.dart';
+import 'package:pangolin/components/overlays/tray_overlay.dart';
+import 'package:pangolin/components/overlays/welcome_overlay.dart';
 import 'package:pangolin/components/shell/shell.dart';
-import 'package:pangolin/utils/data/database_manager.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/utils/providers/customization_provider.dart';
+import 'package:pangolin/services/shell.dart';
+import 'package:pangolin/services/wm.dart';
 import 'package:pangolin/utils/wm/layout.dart';
 import 'package:pangolin/utils/wm/wm.dart';
 
 class Desktop extends StatefulWidget {
-  static final WindowHierarchyController wmController =
-      WindowHierarchyController();
-
-  const Desktop({Key? key}) : super(key: key);
+  const Desktop({super.key});
 
   @override
   _DesktopState createState() => _DesktopState();
@@ -54,51 +54,43 @@ class _DesktopState extends State<Desktop> {
     },
   );
 
-
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance!.addPostFrameCallback((timeStamp) {
-      //Desktop.wmController.addWindowEntry(wallpaperEntry.newInstance());
-      Desktop.wmController.addWindowEntry(
+    ShellService.current.onShellReadyCallback(() {
+      if (CustomizationService.current.showWelcomeScreen) {
+        ShellService.current.showOverlay("welcome");
+      }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      WindowManagerService.current.push(
         shellEntry.newInstance(
           content: Shell(
             overlays: [
-              LauncherOverlay(),
               CompactLauncherOverlay(),
               SearchOverlay(),
               OverviewOverlay(),
               QuickSettingsOverlay(),
               PowerOverlay(),
+              AccountOverlay(),
+              WelcomeOverlay(),
+              NotificationsOverlay(),
+              TrayMenuOverlay(),
             ],
           ),
         ),
       );
       // ignore: avoid_print
       print("Initilized Desktop Shell");
-      
-      if (DatabaseManager.get("initialStart")) {
-        showDialog(
-          barrierColor: Colors.transparent,
-          context: context,
-          builder: (context) {
-            return const WelcomeScreen();
-          },
-        );
-      }
     });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final _customizationProvider = CustomizationProvider.of(context);
-    Desktop.wmController.wmInsets = EdgeInsets.only(
-      left: _customizationProvider.isTaskbarLeft ? 48 : 0,
-      top: _customizationProvider.isTaskbarTop ? 48 : 0,
-      right: _customizationProvider.isTaskbarRight ? 48 : 0,
-      bottom: _customizationProvider.isTaskbarBottom ? 48 : 0,
-    );
+    WindowManagerService.current.controller.wmInsets =
+        const EdgeInsets.only(bottom: 48);
   }
 
   @override
@@ -109,7 +101,7 @@ class _DesktopState extends State<Desktop> {
           const WallpaperLayer(),
           Positioned.fill(
             child: WindowHierarchy(
-              controller: Desktop.wmController,
+              controller: WindowManagerService.current.controller,
               layoutDelegate: const PangolinLayoutDelegate(),
             ),
           ),

@@ -14,25 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import 'package:pangolin/utils/context_menus/context_menu.dart';
-import 'package:pangolin/utils/context_menus/context_menu_item.dart';
-import 'package:pangolin/utils/context_menus/core/context_menu_region.dart';
-import 'package:pangolin/utils/data/app_list.dart';
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/material.dart';
+import 'package:pangolin/services/application.dart';
+import 'package:pangolin/services/wm.dart';
 import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/utils/providers/customization_provider.dart';
 import 'package:pangolin/utils/wm/wm.dart';
-import 'package:pangolin/utils/wm/wm_api.dart';
+import 'package:pangolin/widgets/context_menu.dart';
+import 'package:pangolin/widgets/resource/auto_image.dart';
+import 'package:xdg_desktop/xdg_desktop.dart';
+import 'package:yatl_flutter/yatl_flutter.dart';
 
 class TaskbarItem extends StatefulWidget {
-  final String packageName;
-  const TaskbarItem({required this.packageName, Key? key}) : super(key: key);
+  final DesktopEntry entry;
+
+  const TaskbarItem({required this.entry, super.key});
 
   @override
   _TaskbarItemState createState() => _TaskbarItemState();
 }
 
 class _TaskbarItemState extends State<TaskbarItem>
-    with SingleTickerProviderStateMixin {
+    with
+        SingleTickerProviderStateMixin,
+        StateServiceListener<CustomizationService, TaskbarItem> {
   late AnimationController _ac;
   late Animation<double> _anim;
   bool _hovering = false;
@@ -57,40 +62,33 @@ class _TaskbarItemState extends State<TaskbarItem>
   }
 
   @override
-  Widget build(BuildContext context) {
-    //Selected App
-    final _app = applications
-        .firstWhere((element) => element.packageName == widget.packageName);
-
-    //Running apps
-    //// ITS FAILING HERE
-    final hierarchy = WindowHierarchy.of(context);
+  Widget buildChild(BuildContext context, CustomizationService service) {
+    final hierarchy = WindowManagerService.current.controller;
     final windows = hierarchy.entries;
     //Check if App is running or just pinned
     final bool appIsRunning = windows.any(
-      (element) => element.registry.extra.stableId == widget.packageName,
+      (element) => element.registry.extra.appId == widget.entry.id,
     );
     //get the WindowEntry when the App is running
     final LiveWindowEntry? entry = appIsRunning
         ? windows.firstWhere(
-            (element) => element.registry.extra.stableId == widget.packageName,
+            (element) => element.registry.extra.appId == widget.entry.id,
           )
         : null;
     //check if the App is focused
     final LiveWindowEntry? focusedEntry = appIsRunning
         ? windows.firstWhere(
             (element) =>
-                element.registry.extra.stableId ==
-                hierarchy.sortedEntries.last.registry.extra.stableId,
+                element.registry.extra.appId ==
+                hierarchy.sortedEntries.last.registry.extra.appId,
           )
         : null;
-    final bool focused = windows.length > 1
-        ? focusedEntry?.registry.extra.stableId == widget.packageName &&
-            !windows.last.layoutState.minimized
-        : true;
+    final bool focused = windows.length > 1 &&
+        (focusedEntry?.registry.extra.appId == widget.entry.id &&
+            !windows.last.layoutState.minimized);
 
     final bool showSelected =
-        appIsRunning ? focused && !entry!.layoutState.minimized : false;
+        appIsRunning && focused && !entry!.layoutState.minimized;
 
     if (showSelected) {
       _ac.animateTo(1);
@@ -98,7 +96,6 @@ class _TaskbarItemState extends State<TaskbarItem>
       _ac.animateBack(0);
     }
 
-    final _customizationProvider = CustomizationProvider.of(context);
     //Build Widget
     final Widget finalWidget = LayoutBuilder(
       builder: (context, constraints) => Padding(
@@ -106,68 +103,78 @@ class _TaskbarItemState extends State<TaskbarItem>
         child: SizedBox(
           height: 44,
           width: 42,
-          child: ContextMenuRegion(
-            centerAboveElement: true,
-            useLongPress: false,
-            contextMenu: ContextMenu(
-              items: [
-                ContextMenuItem(
-                  icon: Icons.push_pin_outlined,
-                  title: _customizationProvider.pinnedApps
-                          .contains(_app.packageName)
+          child: ContextMenu(
+            entries: [
+              ContextMenuItem(
+                leading: const Icon(Icons.info_outline_rounded),
+                child: Text(widget.entry.name.resolve(context.locale)),
+                onTap: () {},
+              ),
+              ContextMenuItem(
+                leading: const Icon(Icons.push_pin_outlined),
+                child: Text(
+                  service.pinnedApps.contains(widget.entry.id)
                       ? "Unpin from Taskbar"
                       : "Pin to Taskbar",
-                  onTap: () {
-                    _customizationProvider.togglePinnedApp(_app.packageName);
-                  },
-                  shortcut: "",
                 ),
-              ],
-            ),
-            child: GestureDetector(
-              //key: _globalKey,
-              child: Material(
+                onTap: () {
+                  service.togglePinnedApp(widget.entry.id);
+                },
+              ),
+              if (appIsRunning)
+                ContextMenuItem(
+                  leading: const Icon(Icons.close_outlined),
+                  child: const Text("Close Window"),
+                  onTap: () =>
+                      WindowManagerService.current.pop(entry!.registry.info.id),
+                ),
+            ],
+            child: Material(
+              borderRadius: BorderRadius.circular(4),
+              color: appIsRunning
+                  ? (showSelected
+                      ? Theme.of(context)
+                          .textTheme
+                          .bodyLarge
+                          ?.color
+                          ?.withOpacity(0.2)
+                      : Theme.of(context)
+                          .colorScheme
+                          .background
+                          .withOpacity(0.0))
+                  : Colors.transparent,
+              child: InkWell(
+                onHover: (value) {
+                  _hovering = value;
+                  setState(() {});
+                },
                 borderRadius: BorderRadius.circular(4),
-                //set a background color if the app is running or focused
-                color: appIsRunning
-                    ? (showSelected
-                        ? Theme.of(context)
-                            .textTheme
-                            .bodyText1
-                            ?.color
-                            ?.withOpacity(0.2)
-                        : Theme.of(context).backgroundColor.withOpacity(0.0))
-                    : Colors.transparent,
-                child: InkWell(
-                  onHover: (value) {
-                    _hovering = value;
-                    setState(() {});
-                  },
-                  borderRadius: BorderRadius.circular(4),
-                  onTap: () {
-                    //open the app or toggle
-                    if (appIsRunning) {
-                      _onTap(context, entry!);
-                    } else {
-                      WmAPI.of(context).openApp(widget.packageName);
-                      //print(packageName);
-                    }
-                  },
-                  child: AnimatedBuilder(
-                    animation: _anim,
-                    builder: (context, child) => Stack(
+                onTap: () {
+                  //open the app or toggle
+                  if (appIsRunning) {
+                    _onTap(context, entry!);
+                  } else {
+                    ApplicationService.current.startApp(widget.entry.id);
+                    //print(packageName);
+                  }
+                },
+                child: AnimatedBuilder(
+                  animation: _anim,
+                  builder: (context, child) {
+                    return Stack(
                       children: [
                         Center(
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(6.0, 5, 6, 7),
-                            child: Image(
-                              image: appIsRunning
-                                  ? entry?.registry.info.icon ??
-                                      const NetworkImage("")
-                                  : AssetImage(
-                                      "assets/icons/${_app.iconName}.png",
-                                    ),
-                            ),
+                            child: appIsRunning
+                                ? Image(
+                                    image: entry?.registry.info.icon ??
+                                        const NetworkImage(""),
+                                  )
+                                : AutoVisualResource(
+                                    resource: widget.entry.icon!.main,
+                                    size: 36,
+                                  ),
                           ),
                         ),
                         AnimatedPositioned(
@@ -199,8 +206,8 @@ class _TaskbarItemState extends State<TaskbarItem>
                           ),
                         ),
                       ],
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -208,14 +215,7 @@ class _TaskbarItemState extends State<TaskbarItem>
         ),
       ),
     );
-    if (!_app.canBeOpened) {
-      return IgnorePointer(
-        child: Opacity(
-          opacity: 0.4,
-          child: finalWidget,
-        ),
-      );
-    }
+
     return finalWidget;
   }
 

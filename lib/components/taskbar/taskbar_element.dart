@@ -14,23 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import 'package:pangolin/components/shell/shell.dart';
-import 'package:pangolin/utils/data/common_data.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/material.dart';
+import 'package:pangolin/services/shell.dart';
+
+typedef ArgsBuilder = Map<String, dynamic> Function();
 
 class TaskbarElement extends StatefulWidget {
-  const TaskbarElement({
-    Key? key,
-    required this.child,
-    this.overlayID,
-    this.size,
-    this.iconSize,
-  }) : super(key: key);
-
   final Widget child;
   final String? overlayID;
-  final Size? size;
+  final ArgsBuilder? buildShowArgs;
+  final double? width;
+  final double? height;
+  final bool shrinkWrap;
   final double? iconSize;
+
+  const TaskbarElement({
+    super.key,
+    required this.child,
+    this.overlayID,
+    this.buildShowArgs,
+    this.width,
+    this.height,
+    this.shrinkWrap = false,
+    this.iconSize,
+  });
 
   @override
   _TaskbarElementState createState() => _TaskbarElementState();
@@ -40,69 +48,78 @@ class _TaskbarElementState extends State<TaskbarElement> {
   bool _hover = false;
   @override
   Widget build(BuildContext context) {
-    final _theme = Theme.of(context);
-    final _accentColor = _theme.colorScheme.secondary;
-    final _shell = Shell.of(context);
-    final _darkMode = _theme.brightness == Brightness.dark;
-    final _borderRadius =
-        CommonData.of(context).borderRadius(BorderRadiusType.small);
+    final theme = Theme.of(context);
+    final accentColor = theme.colorScheme.secondary;
+    final darkMode = theme.brightness == Brightness.dark;
 
-    return SizedBox.fromSize(
-      size: widget.size ?? const Size(48, 48),
+    final minSize = Size(
+      !widget.shrinkWrap ? 40.0 : 0.0,
+      !widget.shrinkWrap ? 40.0 : 0.0,
+    );
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        minWidth: widget.width != null ? widget.width! : minSize.width,
+        minHeight: widget.height != null ? widget.height! : minSize.height,
+        maxWidth: widget.width != null ? widget.width! : double.infinity,
+        maxHeight: widget.height != null ? widget.height! : double.infinity,
+      ),
       child: GestureDetector(
-        onTap: () => widget.overlayID != null
-            ? _shell.toggleOverlay(widget.overlayID!)
-            : {},
+        onTap: widget.overlayID != null
+            ? () => ShellService.current.toggleOverlay(
+                  widget.overlayID!,
+                  args: widget.buildShowArgs?.call() ?? const {},
+                )
+            : null,
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           onEnter: (state) => setState(() => _hover = true),
           onExit: (state) => setState(() => _hover = false),
-          child: Padding(
-            padding: const EdgeInsets.all(4.0),
-            child: ClipRRect(
-              borderRadius: _borderRadius,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: widget.overlayID != null
-                    ? _shell.getShowingNotifier(widget.overlayID!)
-                    : ValueNotifier(false),
-                builder: (context, showing, child) {
-                  return IconTheme.merge(
-                    data: IconThemeData(
-                      color: showing
-                          ? _accentColor.computeLuminance() < 0.3
-                              ? const Color(0xffffffff)
-                              : const Color(0xff000000)
-                          : _darkMode
-                              ? const Color(0xffffffff)
-                              : const Color(0xff000000),
-                      size: widget.iconSize ?? 20,
-                    ),
-                    child: Material(
-                      borderRadius: _borderRadius,
-                      color: _hover
-                          ? context.theme.hoverColor
-                          : Colors.transparent,
-                      child: DefaultTextStyle(
-                        style: TextStyle(
-                          color: showing
-                              ? _accentColor.computeLuminance() < 0.3
-                                  ? const Color(0xffffffff)
-                                  : const Color(0xff000000)
-                              : _darkMode
-                                  ? const Color(0xffffffff)
-                                  : const Color(0xff000000),
-                        ),
-                        child: Material(
-                          clipBehavior: Clip.antiAlias,
-                          color: showing ? _accentColor : Colors.transparent,
-                          child: child,
-                        ),
+          child: Material(
+            type: MaterialType.transparency,
+            shape: Constants.smallShape,
+            clipBehavior: Clip.antiAlias,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: widget.overlayID != null
+                  ? ShellService.current.getShowingNotifier(widget.overlayID!)
+                  : ValueNotifier(false),
+              builder: (context, showing, child) {
+                return IconTheme.merge(
+                  data: IconThemeData(
+                    color: showing
+                        ? accentColor.computeLuminance() < 0.3
+                            ? const Color(0xffffffff)
+                            : const Color(0xff000000)
+                        : darkMode
+                            ? const Color(0xffffffff)
+                            : const Color(0xff000000),
+                    size: widget.iconSize ?? 20,
+                  ),
+                  child: Material(
+                    shape: Constants.smallShape,
+                    clipBehavior: Clip.antiAlias,
+                    color:
+                        _hover ? context.theme.hoverColor : Colors.transparent,
+                    child: DefaultTextStyle(
+                      style: TextStyle(
+                        color: showing
+                            ? accentColor.computeLuminance() < 0.3
+                                ? const Color(0xffffffff)
+                                : const Color(0xff000000)
+                            : darkMode
+                                ? const Color(0xffffffff)
+                                : const Color(0xff000000),
+                      ),
+                      child: Material(
+                        clipBehavior: Clip.antiAlias,
+                        color: showing ? accentColor : Colors.transparent,
+                        child: child,
                       ),
                     ),
-                  );
-                },
-                child: widget.child,
-              ),
+                  ),
+                );
+              },
+              child: widget.child,
             ),
           ),
         ),

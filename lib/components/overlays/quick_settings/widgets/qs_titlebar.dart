@@ -14,12 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/widgets/global/quick_button.dart';
+import 'package:flutter/material.dart';
+import 'package:pangolin/components/overlays/quick_settings/quick_settings_overlay.dart';
+import 'package:pangolin/widgets/quick_button.dart';
+import 'package:zenit_ui/zenit_ui.dart';
 
 class QsTitlebar extends StatelessWidget implements PreferredSizeWidget {
-  const QsTitlebar({Key? key, this.leading, this.title, this.trailing})
-      : super(key: key);
+  const QsTitlebar({super.key, this.leading, this.title, this.trailing});
 
   final Widget? leading;
   final String? title;
@@ -27,27 +28,25 @@ class QsTitlebar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = QsController.of(context);
     return SizedBox.fromSize(
       size: preferredSize,
       child: Row(
         children: [
-          if (leading == null && Navigator.canPop(context))
+          if (leading == null && controller.canPop())
             const BackButton()
-          else
+          else if (leading != null)
             leading!,
           if (title != null)
             QuickActionButton(
               title: title,
-              isCircular: false,
               textStyle: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 height: 1.1,
-                color: context.theme.darkMode ? ColorsX.white : ColorsX.black,
+                color: Theme.of(context).foregroundColor,
               ),
-            )
-          else
-            const SizedBox.shrink(),
+            ),
           const Spacer(),
           ...?trailing,
         ],
@@ -60,13 +59,13 @@ class QsTitlebar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 class BackButton extends StatelessWidget {
-  const BackButton({Key? key}) : super(key: key);
+  const BackButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     return QuickActionButton(
       leading: const Icon(Icons.arrow_back),
-      onPressed: () => Navigator.pop(context),
+      onPressed: () => QsController.popRoute(context),
       margin: EdgeInsets.zero,
     );
   }

@@ -16,47 +16,55 @@ limitations under the License.
 
 import 'dart:async';
 
-import 'package:pangolin/components/shell/shell.dart';
-import 'package:pangolin/utils/data/common_data.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/material.dart';
+import 'package:pangolin/services/shell.dart';
 import 'package:pangolin/utils/wm/wm.dart';
-import 'package:pangolin/widgets/global/box/box_container.dart';
+import 'package:pangolin/widgets/resource/image/image.dart';
+import 'package:zenit_ui/zenit_ui.dart';
 
 class OverviewOverlay extends ShellOverlay {
   static const String overlayId = "overview";
 
-  OverviewOverlay({Key? key}) : super(key: key, id: overlayId);
+  OverviewOverlay({super.key}) : super(id: overlayId);
 
   @override
   _OverviewOverlayState createState() => _OverviewOverlayState();
 }
 
-class _OverviewOverlayState extends State<OverviewOverlay>
-    with ShellOverlayState {
+class _OverviewOverlayState extends ShellOverlayState<OverviewOverlay>
+    with StateServiceListener<CustomizationService, OverviewOverlay> {
   @override
   FutureOr<void> requestShow(Map<String, dynamic> args) {
     controller.showing = true;
+    animationController.value = 1;
   }
 
   @override
   FutureOr<void> requestDismiss(Map<String, dynamic> args) {
     controller.showing = false;
+    animationController.value = 0;
   }
 
   @override
-  Widget build(BuildContext context) {
-    final _hierarchy = WindowHierarchy.of(context);
+  Widget buildChild(BuildContext context, CustomizationService service) {
+    if (shouldHide) return const SizedBox();
 
-    if (!controller.showing) return const SizedBox();
+    final WindowHierarchyController hierarchy = WindowHierarchy.of(context);
+    final ImageResource image = service.wallpaper;
+    final theme = Theme.of(context);
 
     return Positioned.fromRect(
-      rect: _hierarchy.wmBounds,
+      rect: hierarchy.wmBounds,
       child: GestureDetector(
         onTap: () {
-          Shell.of(context, listen: false).dismissEverything();
+          ShellService.current.dismissEverything();
           setState(() {});
         },
-        child: BoxSurface(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: theme.surfaceColor,
+          ),
           child: Stack(
             children: [
               Positioned(
@@ -64,29 +72,30 @@ class _OverviewOverlayState extends State<OverviewOverlay>
                 left: 0,
                 right: 0,
                 height: 152,
-                child: BoxSurface(
+                child: DecoratedBox(
+                  decoration:
+                      BoxDecoration(color: theme.colorScheme.background),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(12.0),
-                        child: BoxSurface(
-                          borderRadius: CommonData.of(context)
-                              .borderRadius(BorderRadiusType.small),
-                          /* decoration: BoxDecoration(
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.5),
-                                blurRadius: 10.0,
-                                spreadRadius: 0.0,
-                                offset: Offset(
-                                  2.0,
-                                  2.0,
-                                ), // shadow direction: bottom right
-                              )
-                            ],
-                          ), */
-                          child: Image.asset("assets/images/other/Desktop.png"),
+                        child: Material(
+                          color: Colors.transparent,
+                          clipBehavior: Clip.antiAlias,
+                          shape: Constants.smallShape.copyWith(
+                            side: BorderSide(
+                              color: theme.foregroundColor,
+                              width: 2,
+                            ),
+                          ),
+                          child: InkWell(
+                            onTap: () {},
+                            child: ResourceImage(
+                              resource: image,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
                         ),
                       ),
                       Padding(
@@ -94,16 +103,8 @@ class _OverviewOverlayState extends State<OverviewOverlay>
                         child: FloatingActionButton.extended(
                           highlightElevation: 2,
                           onPressed: () {},
-                          hoverColor: Theme.of(context).backgroundColor,
-                          label: Text(LSX.overviewOverlay.newDesktop),
                           icon: const Icon(Icons.add),
-                          hoverElevation: 1,
-                          foregroundColor:
-                              Theme.of(context).textTheme.bodyText1?.color,
-                          backgroundColor: Theme.of(context)
-                              .backgroundColor
-                              .withOpacity(0.5),
-                          elevation: 0.0,
+                          label: Text(strings.overviewOverlay.newDesktop),
                         ),
                       )
                     ],

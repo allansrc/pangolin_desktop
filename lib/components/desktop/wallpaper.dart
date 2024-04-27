@@ -14,33 +14,30 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dahlia_shared/dahlia_shared.dart';
+import 'package:flutter/material.dart';
 import 'package:pangolin/components/desktop/wallpaper_picker.dart';
-import 'package:pangolin/components/shell/desktop.dart';
-import 'package:pangolin/utils/context_menus/context_menu.dart';
-import 'package:pangolin/utils/context_menus/context_menu_item.dart';
-import 'package:pangolin/utils/context_menus/core/context_menu_region.dart';
-import 'package:pangolin/utils/data/globals.dart';
-import 'package:pangolin/utils/extensions/extensions.dart';
-import 'package:pangolin/utils/providers/customization_provider.dart';
-import 'package:pangolin/utils/wm/wm_api.dart';
+import 'package:pangolin/services/application.dart';
+import 'package:pangolin/services/wm.dart';
+import 'package:pangolin/widgets/context_menu.dart';
+import 'package:pangolin/widgets/resource/image/image.dart';
 import 'package:provider/provider.dart';
 
-class WallpaperLayer extends StatelessWidget {
-  const WallpaperLayer({Key? key}) : super(key: key);
+class WallpaperLayer extends StatelessWidget
+    with StatelessServiceListener<CustomizationService> {
+  const WallpaperLayer({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // fetch image from properties
-    final String image = CustomizationProvider.of(context).wallpaper;
-
-    //get Bing Wallpaper of the Day data
-    getBingWallpaper();
-    //return const SizedBox();
+  Widget buildChild(BuildContext context, CustomizationService service) {
     return SizedBox.expand(
       child: ChangeNotifierProvider.value(
-        value: Desktop.wmController,
-        child: _WallpaperContextMenu(child: wallpaperImage(image)),
+        value: WindowManagerService.current.controller,
+        child: _WallpaperContextMenu(
+          child: ResourceImage(
+            resource: service.wallpaper,
+            fit: BoxFit.cover,
+          ),
+        ),
       ),
     );
   }
@@ -48,62 +45,37 @@ class WallpaperLayer extends StatelessWidget {
 
 class _WallpaperContextMenu extends StatelessWidget {
   const _WallpaperContextMenu({
-    required Widget child,
-    Key? key,
-  })  : _child = child,
-        super(key: key);
+    required this.child,
+  });
 
-  final Widget _child;
+  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return ContextMenuRegion(
-      contextMenu: ContextMenu(
-        items: [
-          ContextMenuItem(
-            onTap: () {
-              showDialog(
-                barrierColor: Colors.transparent,
-                context: context,
-                builder: (context) {
-                  return const WallpaperPicker();
-                },
-              );
-            },
-            icon: Icons.image,
-            title: "Change Wallpaper",
-            shortcut: "",
-          ),
-          ContextMenuItem(
-            onTap: () {
-              WmAPI.of(context).openApp("io.dahlia.settings");
-            },
-            icon: Icons.settings_outlined,
-            title: "Settings",
-            shortcut: "",
-          ),
-        ],
-      ),
-      child: _child,
-    );
-  }
-}
-
-Widget wallpaperImage(String source) {
-  if (source.startsWith("http")) {
-    return CachedNetworkImage(
-      imageUrl: source,
-      fit: BoxFit.cover,
-      cacheKey: source,
-      useOldImageOnUrlChange: true,
-      fadeInDuration: const Duration(milliseconds: 1000),
-      fadeInCurve: Curves.easeInOut,
-      fadeOutCurve: Curves.easeInOut,
-    );
-  } else {
-    return Image.asset(
-      source,
-      fit: BoxFit.cover,
+    return ContextMenu(
+      entries: [
+        ContextMenuItem(
+          onTap: () {
+            showDialog(
+              barrierColor: Colors.transparent,
+              context: context,
+              builder: (context) {
+                return const WallpaperPicker();
+              },
+            );
+          },
+          leading: const Icon(Icons.image),
+          child: const Text("Change Wallpaper"),
+        ),
+        ContextMenuItem(
+          onTap: () {
+            ApplicationService.current.startApp("io.dahlia.settings");
+          },
+          leading: const Icon(Icons.settings_outlined),
+          child: const Text("Settings"),
+        ),
+      ],
+      child: child,
     );
   }
 }
